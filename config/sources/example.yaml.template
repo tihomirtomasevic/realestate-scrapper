@@ -1,0 +1,102 @@
+# Source definition template — copy to config/sources/<name>.yaml (gitignored).
+#
+# Everything here is fictional. The engine has no built-in site knowledge:
+# whatever you define here is the entire contract.
+
+# Short identifier, stored in listings.source. Keep it stable — changing it
+# orphans previously crawled rows.
+key: example-site
+
+# Human label for logs and the UI.
+name: Example Classifieds
+
+# Base origin. Relative hrefs found on pages are resolved against this.
+base_url: https://classifieds.example.com
+
+# Optional: fixed category label recorded on every listing from this source.
+category: realestate/apartments-sale
+
+crawl:
+  # Randomised pause between requests. Keep it human.
+  delay_seconds: { min: 4, max: 11 }
+  max_pages_per_search: 3
+  max_details_per_run: 40
+  # Honour the site's robots.txt. Leave true.
+  respect_robots: true
+  # Wait for this selector before reading a page; catches slow client-side
+  # rendering and interstitials. Optional.
+  ready_selector: "main"
+
+# The narrowed searches you want tracked. Add as many as you like.
+searches:
+  - label: apartments-city-centre-under-200k
+    url: https://classifieds.example.com/search?cat=apartments&area=centre&price_max=200000&sort=newest
+    # Optional per-search override of the pagination template below.
+  - label: apartments-suburb-3-rooms
+    url: https://classifieds.example.com/search?cat=apartments&area=suburb&rooms=3
+
+pagination:
+  # How to build page N of a search. {url} is the search URL above, {page} the
+  # 1-based page number. Omit the whole block for single-page searches.
+  mode: query_param        # query_param | path_suffix | next_link
+  param: page
+  start_at: 1
+  # For mode: next_link, give the selector for the "next page" anchor instead.
+  next_selector: "a[rel='next']"
+
+# Selectors applied to a SEARCH RESULTS page to find each ad and its link.
+list:
+  item: "article.listing-card"
+  link: "a.listing-card__link"          # href -> detail page
+  # Optional: a stable per-ad id. If absent, the engine derives one from the
+  # detail URL path.
+  source_id_attr: "data-listing-id"
+
+# Selectors applied to a DETAIL page. All optional except title.
+# `attr` reads an attribute instead of text. `regex` extracts capture group 1.
+detail:
+  title:
+    selector: "h1.listing__title"
+  description:
+    selector: "div.listing__description"
+  price:
+    selector: "span.listing__price"
+    regex: "([0-9.,]+)"
+    # Numbers are parsed with Croatian conventions by default:
+    # "189.500,50" -> 189500.50. Set decimal: dot for "189,500.50".
+    decimal: comma
+  area_m2:
+    selector: "li[data-field='area']"
+    regex: "([0-9.,]+)"
+    decimal: comma
+  rooms:
+    selector: "li[data-field='rooms']"
+    regex: "([0-9.,]+)"
+    decimal: comma
+  floor:
+    selector: "li[data-field='floor']"
+  location:
+    selector: "span.listing__location"
+  seller_name:
+    selector: "div.seller__name"
+  seller_phone:
+    selector: "a[href^='tel:']"
+    attr: href
+  seller_type:
+    # Map a matched selector to a fixed value. First match wins; no match -> null.
+    one_of:
+      - { selector: "span.badge--agency", value: agency }
+      - { selector: "span.badge--private", value: private }
+  images:
+    selector: "img.gallery__image"
+    attr: src
+    multiple: true
+    max: 12
+
+# Strings stripped from description before duplicate comparison. Agency footers
+# repeat across every ad from that seller and would otherwise make UNRELATED
+# listings look near-identical. The boilerplate learner adds to this over time;
+# seed anything you already know.
+boilerplate:
+  - "Commission is 1.5% of the purchase price."
+  - "All information provided is subject to change without notice."

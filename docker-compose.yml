@@ -1,0 +1,77 @@
+name: adcrawler
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-adcrawler}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-adcrawler}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # *.sql here runs once, on first init of an empty data volume.
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${DB_PORT:-15432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-adcrawler} -d ${POSTGRES_DB:-adcrawler}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-adcrawler}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-adcrawler}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+  crawler:
+    build: ./crawler
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-adcrawler}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-adcrawler}
+      SOURCES_DIR: /app/config/sources
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Source definitions are mounted, not baked in: they are gitignored and
+      # can be edited without a rebuild.
+      - ./config/sources:/app/config/sources:ro
+      # Persistent browser profile — keeps cookies between runs so we look like
+      # one returning visitor rather than a brand-new client every time.
+      - browserprofile:/data
+      # NOTE: do NOT mount /tmp/.X11-unix read-only here — it prevents the
+      # container's own Xvfb from creating its socket. For the one-off
+      # `--login` flow, pass the host display on that command instead:
+      #   docker compose run --rm -e DISPLAY=$DISPLAY \
+      #     -v /tmp/.X11-unix:/tmp/.X11-unix crawler python -m crawler.run --login <src>
+    # Run under a profile so `docker compose up` starts only the app; the
+    # crawler is opt-in via `--profile crawl` or an explicit `run`.
+    profiles: ["crawl"]
+
+volumes:
+  pgdata:
+  browserprofile:

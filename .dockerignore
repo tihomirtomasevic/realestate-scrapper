@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+config/sources/*
+!config/sources/example.yaml.template
+data/
+**/node_modules
+**/dist
+**/__pycache__
+*.md

@@ -1,0 +1,46 @@
+# ── Secrets and target definitions — NEVER commit ──────────────────────────
+# The whole point: no site domains, selectors or search URLs reach the repo.
+.env
+.env.*
+!.env.example
+
+# Source definitions carry the target domains + selectors. Only the fictional
+# template is tracked.
+config/sources/*
+!config/sources/example.yaml.template
+!config/sources/README.md
+
+# ── Scraped data (contains real listing URLs) ──────────────────────────────
+data/
+*.db
+*.sqlite3
+dumps/
+*.dump
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ── Node / frontend ────────────────────────────────────────────────────────
+node_modules/
+web/dist/
+*.local
+
+# ── Editors / OS ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+
+# ── Playwright ─────────────────────────────────────────────────────────────
+browser-profile/
+playwright-report/
+test-results/
+# The MCP browser drops page snapshots and screenshots here, and a snapshot of
+# a results page is a verbatim copy of the target site.
+.playwright-mcp/
+*.png

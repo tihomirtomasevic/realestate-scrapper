@@ -1,0 +1,6 @@
+playwright==1.49.1
+selectolax==0.3.27
+psycopg[binary]==3.2.3
+PyYAML==6.0.2
+Pillow==11.1.0
+ImageHash==4.3.1
