@@ -76,6 +76,11 @@ export function FilterBar({ value, onChange, onReset, total }: {
                    onChange={(e) => set('collapse_duplicates', e.target.checked)} />
             Group duplicates
           </label>
+          <label title="Hide roh-bau shells, ruins and houses sold for adaptation. Properties needing only cosmetic work stay visible.">
+            <input type="checkbox" checked={value.hide_gated}
+                   onChange={(e) => set('hide_gated', e.target.checked)} />
+            Hide unfinished / ruins / for adaptation
+          </label>
           {total !== undefined && (
             <span className="muted">{total.toLocaleString('hr-HR')} results</span>
           )}

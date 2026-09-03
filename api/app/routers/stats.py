@@ -26,6 +26,8 @@ async def stats():
             (SELECT COUNT(*) FROM listings WHERE status = 'missing') AS listings_missing,
             (SELECT COUNT(*) FROM listings WHERE status = 'out_of_scope')
                                                                    AS listings_out_of_scope,
+            (SELECT COUNT(*) FROM v_property_gate WHERE gated)     AS properties_gated,
+            (SELECT COUNT(*) FROM listing_gate)                    AS listings_classified,
             (SELECT COUNT(*) FROM dedup_pairs
               WHERE decision = 'review' AND human_label IS NULL)  AS review_queue,
             (SELECT MAX(finished_at) FROM crawl_runs)             AS last_crawl,

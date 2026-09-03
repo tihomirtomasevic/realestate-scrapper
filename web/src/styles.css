@@ -92,6 +92,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .badge.dup { color: var(--warn); border-color: var(--warn); }
 .badge.drop { color: var(--drop); border-color: var(--drop); }
 .badge.inactive { color: var(--danger); border-color: var(--danger); }
+/* Excluded by the condition filter — shown only when that filter is off. */
+.badge.gate { color: var(--danger); border-color: var(--danger); }
+/* Cosmetic work only: visible by default, so it reads as a note, not a warning. */
+.badge.soft { color: var(--muted); border-color: var(--muted); }
 
 .muted { color: var(--muted); }
 .right { text-align: right; }

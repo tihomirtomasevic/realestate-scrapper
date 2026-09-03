@@ -31,6 +31,7 @@ export const api = {
       seller_type: filters.seller_type,
       active_only: filters.active_only,
       collapse_duplicates: filters.collapse_duplicates,
+      hide_gated: filters.hide_gated,
       // Relevance ordering only means anything with a query present.
       sort: filters.sort === 'relevance' && !filters.q ? 'newest' : filters.sort,
       page,

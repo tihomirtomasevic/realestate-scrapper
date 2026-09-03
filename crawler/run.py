@@ -169,6 +169,14 @@ def main() -> int:
                     help="re-score and re-cluster everything already stored, no crawling")
     ap.add_argument("--phash-only", action="store_true",
                     help="hash images that have no perceptual hash yet, then exit")
+    ap.add_argument("--gate", action="store_true",
+                    help="classify unfinished / ruin / needs-adaptation on ads whose "
+                         "text has no current verdict, then exit")
+    ap.add_argument("--gate-limit", type=int, metavar="N",
+                    help="stop the condition gate after N listings")
+    ap.add_argument("--gate-workers", type=int, metavar="N",
+                    help="concurrent gate requests (default GATE_WORKERS=4); keep at "
+                         "or below the model server's parallel slot count")
     ap.add_argument("--verify-gone", action="store_true",
                     help="re-check ads that dropped out of the search results and "
                          "settle whether they actually ended, then exit")
@@ -182,6 +190,16 @@ def main() -> int:
         return login(args.login)
 
     # These operate on stored data and need no source configs.
+    if args.gate:
+        from . import gate, storage
+        with storage.connect() as conn:
+            try:
+                print(gate.run(conn, args.gate_limit, args.gate_workers))
+            except gate.GateError as exc:
+                log.error("condition gate unavailable: %s", exc)
+                return 2
+        return 0
+
     if args.dedup_only:
         from . import dedup_pass, storage
         with storage.connect() as conn:

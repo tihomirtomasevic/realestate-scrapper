@@ -28,6 +28,11 @@ export interface ListingSummary {
   thumbnail: string | null
   ai_score: number | null
   ai_verdict: string | null
+  gated: boolean
+  gate_unfinished: boolean
+  gate_ruin: boolean
+  gate_needs_adaptation: boolean
+  gate_severity: 'cosmetic' | 'partial' | 'full' | null
 }
 
 export interface PricePoint {
@@ -123,13 +128,15 @@ export interface Filters {
   seller_type: string
   active_only: boolean
   collapse_duplicates: boolean
+  /** Hide unfinished builds, ruins and adaptation projects. */
+  hide_gated: boolean
   sort: SortField
 }
 
 export const EMPTY_FILTERS: Filters = {
   q: '', min_price: '', max_price: '', min_area: '', max_area: '',
   rooms: '', location: '', seller_type: '',
-  active_only: true, collapse_duplicates: true, sort: 'newest',
+  active_only: true, collapse_duplicates: true, hide_gated: true, sort: 'newest',
 }
 
 export interface CrawlRequest {

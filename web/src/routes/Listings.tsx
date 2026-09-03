@@ -19,6 +19,7 @@ function fromParams(sp: URLSearchParams): Filters {
     seller_type: sp.get('seller_type') ?? '',
     active_only: sp.get('active_only') !== 'false',
     collapse_duplicates: sp.get('collapse_duplicates') !== 'false',
+    hide_gated: sp.get('hide_gated') !== 'false',
     sort: (sp.get('sort') as SortField) ?? 'newest',
   }
 }

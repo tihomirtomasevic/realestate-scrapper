@@ -43,7 +43,7 @@ WHERE {where}
 
 
 def _build(q, source, min_price, max_price, min_area, max_area, rooms,
-           location, seller_type, active_only, has_price):
+           location, seller_type, active_only, has_price, hide_gated):
     where, params = ["TRUE"], {}
     rank = "0::real"
 
@@ -82,6 +82,16 @@ def _build(q, source, min_price, max_price, min_area, max_area, rooms,
         where.append("l.active")
     if has_price:
         where.append("o.price_eur IS NOT NULL")
+    if hide_gated:
+        # NOT EXISTS, not a join: a property with no verdict yet must stay
+        # visible. Treating "unclassified" as "gated" would empty the feed the
+        # moment the gate falls behind the crawler.
+        where.append("""NOT EXISTS (
+            SELECT 1 FROM listings g2
+            JOIN listing_gate lg ON lg.listing_id = g2.id
+            WHERE lg.gated
+              AND COALESCE('c' || g2.cluster_id, 'l' || g2.id)
+                = COALESCE('c' || l.cluster_id, 'l' || l.id))""")
 
     return _BASE.format(rank=rank, where=" AND ".join(where)), params
 
@@ -99,6 +109,9 @@ async def search_listings(
     seller_type: str | None = Query(None, pattern="^(private|agency)$"),
     active_only: bool = True,
     has_price: bool = False,
+    hide_gated: bool = Query(
+        True, description="Hide unfinished builds, ruins and properties sold for "
+                          "adaptation (cosmetic-only cases are not hidden)"),
     collapse_duplicates: bool = Query(
         True, description="One row per property instead of per source ad"),
     sort: SortField = SortField.newest,
@@ -107,7 +120,8 @@ async def search_listings(
 ):
     page_size = min(page_size or settings.api_page_size_default, settings.api_page_size_max)
     base, params = _build(q, source, min_price, max_price, min_area, max_area,
-                          rooms, location, seller_type, active_only, has_price)
+                          rooms, location, seller_type, active_only, has_price,
+                          hide_gated)
 
     if sort is SortField.relevance and not q:
         sort = SortField.newest
@@ -132,8 +146,16 @@ async def search_listings(
                (SELECT i.url FROM images i
                  WHERE i.listing_id = p.listing_id
                  ORDER BY i.position NULLS LAST, i.id LIMIT 1) AS thumbnail,
-               a.score AS ai_score, a.verdict AS ai_verdict
+               a.score AS ai_score, a.verdict AS ai_verdict,
+               COALESCE(pg.gated, false)            AS gated,
+               COALESCE(pg.unfinished, false)       AS gate_unfinished,
+               COALESCE(pg.ruin, false)             AS gate_ruin,
+               COALESCE(pg.needs_adaptation, false) AS gate_needs_adaptation,
+               CASE pg.severity_rank WHEN 3 THEN 'full' WHEN 2 THEN 'partial'
+                                     WHEN 1 THEN 'cosmetic' END AS gate_severity
         FROM picked p
+        LEFT JOIN v_property_gate pg
+               ON pg.group_key = COALESCE('c' || p.cluster_id, 'l' || p.listing_id)
         LEFT JOIN LATERAL (
             SELECT aa.score, aa.verdict FROM ai_analysis aa
             JOIN observations oo ON oo.id = aa.observation_id

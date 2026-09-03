@@ -81,6 +81,15 @@ export function ResultsTable({ rows, sort, onSort }: {
                     </span>
                   )}
                   {!r.active && <span className="badge inactive">removed</span>}
+                  {/* Cosmetic cases are never hidden by the filter, so the badge is
+                      the only signal that any work is needed at all. */}
+                  {r.gate_unfinished && <span className="badge gate">unfinished</span>}
+                  {r.gate_ruin && <span className="badge gate">ruin</span>}
+                  {r.gate_needs_adaptation && (
+                    <span className={r.gate_severity === 'cosmetic' ? 'badge soft' : 'badge gate'}>
+                      {r.gate_severity === 'cosmetic' ? 'needs refresh' : 'for adaptation'}
+                    </span>
+                  )}
                   {r.ai_verdict === 'recommend' && (
                     <span className="badge drop">AI pick{r.ai_score ? ` ${r.ai_score}` : ''}</span>
                   )}

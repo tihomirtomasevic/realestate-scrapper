@@ -52,6 +52,14 @@ class ListingSummary(BaseModel):
     thumbnail: str | None = None
     ai_score: float | None = None
     ai_verdict: str | None = None
+    # Condition gate. `gated` is what the default filter hides; the flags are
+    # kept alongside so a listing that slips through on `hide_gated=false`
+    # still shows why it was flagged.
+    gated: bool = False
+    gate_unfinished: bool = False
+    gate_ruin: bool = False
+    gate_needs_adaptation: bool = False
+    gate_severity: str | None = None
 
 
 class PricePoint(BaseModel):
@@ -193,6 +201,10 @@ class Stats(BaseModel):
     listings_missing: int
     # Live ads our search no longer returns — promoted placements, mostly.
     listings_out_of_scope: int
+    # Properties hidden by the condition filter, and how many source ads
+    # have a verdict at all — the gap is the gate's backlog.
+    properties_gated: int = 0
+    listings_classified: int = 0
     review_queue: int
     last_crawl: datetime | None
     sources: list[str]

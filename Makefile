@@ -88,6 +88,10 @@ scheduler-stop:  ## Stop the background crawler, leave the app up
 validate:        ## Check configs and selectors against one live page
 	$(RUN) --validate
 
+gate: ## Classify unfinished / ruin / for-adaptation on ads with no current verdict
+	$(RUN) --gate
+	@echo "gated properties: $$($(COMPOSE) exec -T db psql -U $${POSTGRES_USER:-adcrawler} -d $${POSTGRES_DB:-adcrawler} -t -A -c 'SELECT count(*) FROM v_property_gate WHERE gated')"
+
 verify-gone:     ## Re-check ads that vanished from search and settle their status
 	$(RUN) --verify-gone
 
