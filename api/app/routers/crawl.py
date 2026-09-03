@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from psycopg import errors
 
 from .. import db
+from ..config import settings
 from ..schemas import CrawlRequestOut, CrawlStatus
 
 router = APIRouter(prefix="/api/crawl", tags=["crawl"])
@@ -55,9 +56,43 @@ async def crawl_status():
 
 @router.post("/cancel", response_model=CrawlRequestOut | None)
 async def cancel_pending():
-    """Drop a queued request. A crawl already running is left alone — killing it
-    mid-flight would leave partial data behind."""
+    """Drop a queued request, or reap one stranded in 'running' by a dead crawler.
+
+    A crawl still in flight is left alone — killing it mid-flight would leave
+    partial data behind. That was the whole of the original behaviour, and it is
+    why a crash was unrecoverable: the crawler writes no heartbeat, so when its
+    process dies the row stays 'running' for good. idx_crawl_requests_one_active
+    then rejects every later crawl, and cancel could not clear it either, because
+    'running' was the one state it refused to touch. A single crash wedged the
+    queue until somebody edited the table by hand — which is exactly what
+    request #5 needed on 2026-09-03, thirteen days after the process behind it
+    had gone.
+
+    A crawl older than any real crawl takes is therefore read as orphaned rather
+    than live. It is marked 'failed', not 'cancelled': nobody cancelled it, the
+    process died, and the distinction is what makes the row legible later.
+    CRAWL_STALE_MINUTES tunes the threshold; the default of two hours sits far
+    above the few minutes a full pass over every source actually takes.
+    """
     row = await db.fetch_one(
         "UPDATE crawl_requests SET status = 'cancelled', finished_at = now() "
         "WHERE status = 'pending' RETURNING *")
+    if row:
+        return CrawlRequestOut(**row)
+
+    row = await db.fetch_one(
+        """
+        UPDATE crawl_requests
+        SET status      = 'failed',
+            finished_at = now(),
+            error       = 'orphaned: still running after '
+                          || %(stale_minutes)s || ' min with no crawler alive; '
+                          || 'reaped by cancel'
+        WHERE status = 'running'
+          AND COALESCE(started_at, requested_at)
+              < now() - make_interval(mins => %(stale_minutes)s)
+        RETURNING *
+        """,
+        {"stale_minutes": settings.crawl_stale_minutes},
+    )
     return CrawlRequestOut(**row) if row else None

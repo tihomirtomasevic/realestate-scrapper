@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     api_page_size_default: int = 50
     api_page_size_max: int = 200
     log_level: str = "INFO"
+    # A crawl still 'running' after this long has no process behind it:
+    # the crawler sends no heartbeat, so elapsed time is the only signal
+    # that separates a dead run from a live one. See routers/crawl.py.
+    crawl_stale_minutes: int = 120
 
     @property
     def cors_origins(self) -> list[str]:
